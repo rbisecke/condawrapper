@@ -1,3 +1,4 @@
+#!/bin/bash
 # Wrapper for activating and deactivating conda environments.
 #
 #| Copyright (c) 2014-2015 Andrew Dawson
@@ -33,7 +34,6 @@
 #   This script should be sourced into your running shell, running it in
 #   a new shell will do nothing.
 #
-
 
 #=======================================================================
 # Constants:
@@ -163,6 +163,55 @@ activate () {
 }
 
 #-----------------------------------------------------------------------
+# Activate a conda environment.
+#
+# Globals:
+#   CONDA_DEFAULT_ENV (set by conda)
+# Arguments:
+#   env_name
+#     Name of an existing conda environment.
+# Returns:
+#   None
+# Exits:
+#   0 on success, >0 on error.
+#-----------------------------------------------------------------------
+workon () {
+  local env_name="$1"
+
+  # Ensure an environment name is given:
+  if [[ $# -ne 1 ]] || [[ -z "$env_name" ]]; then
+    __err "usage: activate env_name"
+    return 1
+  fi
+
+  # Check conda is available on the current path:
+  if ! __conda_check; then
+    __err "error: conda is not found on your path, aborting"
+    return 1
+  fi
+  
+  # Apply pre-activate hooks if defined:
+  __apply_hook "$env_name" "preactivate"
+
+  # Activate the specified environment. Check for errors activating, if
+  # errors occurred attempt to run the deactivation for the environment
+  # to make sure any environment changes applied by the preactivate hook
+  # are undone if required:
+  source activate "$env_name" 2> /dev/null
+  if [[ $? -ne 0 ]]; then
+    __err "error: failed to activate environment '$env_name': not found or invalid"
+    __apply_hook "$env_name" "predeactivate"
+    __apply_hook "$env_name" "postdeactivate"
+    return 1
+  fi
+  
+  # Run the remaining hook:
+  __apply_hook "$env_name" "postactivate"
+
+  return 0
+}
+
+#-----------------------------------------------------------------------
 # Deactivate a conda environment.
 #
 # Globals:
@@ -197,7 +246,7 @@ deactivate () {
   __apply_hook "$env_name" "predeactivate"
 
   # Deactivate the environment:
-  source deactivate 2> /dev/null
+  conda deactivate 2> /dev/null
   status=$?
 
   # Apply the post-deactivation hook:
@@ -232,7 +281,7 @@ mkcondaenv () {
   env_name="$1"
   shift
   # Create the environment:
-  conda create -n "$env_name" $@
+  conda create -n "$env_name" python=3.6 $@
   status=$?
   if [ $status -ne 0 ]; then
     __err "error: failed to create the conda environment"
@@ -287,3 +336,4 @@ rmcondaenv () {
   fi
   return 0
 }
+

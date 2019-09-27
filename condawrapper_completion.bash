@@ -1,3 +1,4 @@
+#!/bin/bash
 # Bash completion for condawrapper.
 #
 #| Copyright (c) 2014-2015 Andrew Dawson
@@ -102,10 +103,8 @@ EOF
 #   A list of environment names.
 #-----------------------------------------------------------------------
 __generate_env_list () {
-  local envdir
-  for envdir in $(__find_env_dirs); do
-    ls -1 "$envdir"
-  done
+  envdir=/anaconda3/envs
+  ls -1 "$envdir"
 }
 
 
@@ -138,4 +137,5 @@ __envcomplete () {
 
 # Register the completions:
 complete -F __envcomplete activate
+complete -F __envcomplete workon
 complete -F __envcomplete rmcondaenv
